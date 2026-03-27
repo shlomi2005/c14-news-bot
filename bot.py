@@ -5,14 +5,14 @@ import os
 import json
 import time
 import logging
-import xml.etree.ElementTree as ET
 import requests
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@c14newsflash")
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "60"))
 STATE_FILE = os.path.join(os.environ.get("DATA_DIR", "."), "state_c14.json")
-NEWS_URL = "https://www.c14.co.il/category/%D7%9E%D7%91%D7%96%D7%A7%D7%99%D7%9D/feed/"
+RSS_FEED = "https://www.c14.co.il/category/%D7%9E%D7%91%D7%96%D7%A7%D7%99%D7%9D/feed/"
+NEWS_URL = f"https://api.rss2json.com/v1/api.json?rss_url={RSS_FEED}&count=20"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,35 +40,23 @@ def save_state(seen: set):
 
 
 def fetch_news() -> list:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/rss+xml, application/xml, text/xml, */*",
-        "Accept-Language": "he-IL,he;q=0.9",
-        "Referer": "https://www.c14.co.il/",
-    }
-    response = requests.get(NEWS_URL, headers=headers, timeout=30)
+    response = requests.get(NEWS_URL, timeout=30)
     response.raise_for_status()
 
-    root = ET.fromstring(response.content)
-    ns = {"content": "http://purl.org/rss/1.0/modules/content/"}
+    data = response.json()
+    if data.get("status") != "ok":
+        raise RuntimeError(f"rss2json error: {data.get('message', 'unknown')}")
+
     items = []
+    for post in data.get("items", []):
+        post_id = post.get("guid") or post.get("link", "")
+        title = post.get("title", "").strip()
+        link = post.get("link", "")
+        desc_raw = post.get("description", "") or post.get("content", "")
 
-    for item in root.findall(".//item"):
-        title_el = item.find("title")
-        link_el = item.find("link")
-        guid_el = item.find("guid")
-        desc_el = item.find("description")
-
-        title = title_el.text.strip() if title_el is not None and title_el.text else ""
-        link = link_el.text.strip() if link_el is not None and link_el.text else ""
-        post_id = guid_el.text.strip() if guid_el is not None and guid_el.text else link
-
-        # נקה HTML מהתיאור
-        desc = ""
-        if desc_el is not None and desc_el.text:
-            import re as _re
-            desc = _re.sub(r"<[^>]+>", "", desc_el.text).strip()
-            desc = " ".join(desc.split())[:300]
+        import re as _re
+        desc = _re.sub(r"<[^>]+>", "", desc_raw).strip()
+        desc = " ".join(desc.split())[:300]
 
         if not title:
             continue
