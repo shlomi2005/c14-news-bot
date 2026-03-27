@@ -147,6 +147,8 @@ def main():
     if not TELEGRAM_TOKEN:
         raise RuntimeError("לא נמצא TELEGRAM_TOKEN במשתני הסביבה")
 
+    os.makedirs(os.environ.get("DATA_DIR", "."), exist_ok=True)
+
     logger.info("בוט חדשות C14 התחיל")
     logger.info(f"ערוץ: {CHANNEL_ID}")
     logger.info(f"בדיקה כל {CHECK_INTERVAL} שניות")
