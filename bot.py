@@ -87,10 +87,12 @@ def format_message(item: dict) -> str:
     title = item["title"]
     link = item.get("link", "")
 
+    channel_line = "\n\n🇮🇱 <b>ביחד ננצח</b> | <a href=\"https://t.me/c14newsflash\">C14 חדשות</a>"
+
     if link:
-        return f"📰 <b>{title}</b>\n\n🔗 <a href=\"{link}\">קרא עוד</a>"
+        return f"📰 <b>{title}</b>\n\n🔗 <a href=\"{link}\">קרא עוד</a>{channel_line}"
     else:
-        return f"📰 <b>{title}</b>"
+        return f"📰 <b>{title}</b>{channel_line}"
 
 
 def process_once(seen: set, initialized: bool) -> tuple[set, bool]:
