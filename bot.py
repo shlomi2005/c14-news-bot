@@ -40,7 +40,13 @@ def save_state(seen: set):
 
 
 def fetch_news() -> list:
-    response = requests.get(NEWS_URL, timeout=30)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        "Accept-Language": "he-IL,he;q=0.9",
+        "Referer": "https://www.c14.co.il/",
+    }
+    response = requests.get(NEWS_URL, headers=headers, timeout=30)
     response.raise_for_status()
 
     root = ET.fromstring(response.content)
