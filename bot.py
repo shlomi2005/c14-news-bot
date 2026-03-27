@@ -57,15 +57,23 @@ def fetch_news() -> list:
         title_el = item.find("title")
         link_el = item.find("link")
         guid_el = item.find("guid")
+        desc_el = item.find("description")
 
         title = title_el.text.strip() if title_el is not None and title_el.text else ""
         link = link_el.text.strip() if link_el is not None and link_el.text else ""
         post_id = guid_el.text.strip() if guid_el is not None and guid_el.text else link
 
+        # נקה HTML מהתיאור
+        desc = ""
+        if desc_el is not None and desc_el.text:
+            import re as _re
+            desc = _re.sub(r"<[^>]+>", "", desc_el.text).strip()
+            desc = " ".join(desc.split())[:300]
+
         if not title:
             continue
 
-        items.append({"id": post_id, "title": title, "link": link})
+        items.append({"id": post_id, "title": title, "link": link, "desc": desc})
 
     return items
 
@@ -86,13 +94,15 @@ def send_telegram(text: str):
 def format_message(item: dict) -> str:
     title = item["title"]
     link = item.get("link", "")
+    desc = item.get("desc", "")
 
     channel_line = "\n\n🇮🇱 <b>ביחד ננצח</b> | <a href=\"https://t.me/c14newsflash\">C14 חדשות</a>"
+    desc_line = f"\n\n{desc}" if desc else ""
 
     if link:
-        return f"📰 <b>{title}</b>\n\n🔗 <a href=\"{link}\">קרא עוד</a>{channel_line}"
+        return f"📰 <b>{title}</b>{desc_line}\n\n🔗 <a href=\"{link}\">קרא עוד</a>{channel_line}"
     else:
-        return f"📰 <b>{title}</b>{channel_line}"
+        return f"📰 <b>{title}</b>{desc_line}{channel_line}"
 
 
 def process_once(seen: set, initialized: bool) -> tuple[set, bool]:
