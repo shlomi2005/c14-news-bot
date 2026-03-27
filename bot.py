@@ -5,16 +5,13 @@ import os
 import json
 import time
 import logging
-import hashlib
 import requests
-from datetime import datetime
-from bs4 import BeautifulSoup
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@c14newsflash")
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "60"))
 STATE_FILE = os.path.join(os.environ.get("DATA_DIR", "."), "state_c14.json")
-NEWS_URL = "https://www.c14.co.il/news-flash"
+NEWS_URL = "https://www.c14.co.il/wp-json/wp/v2/posts?categories=950&per_page=20&_fields=id,title,link,date&orderby=date&order=desc"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,41 +41,23 @@ def save_state(seen: set):
 def fetch_news() -> list:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Referer": "https://www.google.com/",
     }
-    session = requests.Session()
-    session.headers.update(headers)
-    response = session.get(NEWS_URL, timeout=30, allow_redirects=True)
+    response = requests.get(NEWS_URL, headers=headers, timeout=30)
     response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    posts = response.json()
     items = []
 
-    for article in soup.select("article, .news-item, .flash-item, [class*='flash'], [class*='news-item']"):
-        title_el = article.select_one("h1, h2, h3, h4, a")
-        title = title_el.get_text(strip=True) if title_el else ""
+    for post in posts:
+        post_id = str(post.get("id", ""))
+        title = post.get("title", {}).get("rendered", "").strip()
+        link = post.get("link", "")
 
-        if not title or len(title) < 5:
+        if not post_id or not title:
             continue
 
-        link_el = article.select_one("a[href]")
-        link = ""
-        if link_el:
-            href = link_el.get("href", "")
-            if href.startswith("http"):
-                link = href
-            elif href.startswith("/"):
-                link = "https://www.c14.co.il" + href
-
-        item_id = hashlib.md5(title.encode()).hexdigest()
-
         items.append({
-            "id": item_id,
+            "id": post_id,
             "title": title,
             "link": link,
         })
