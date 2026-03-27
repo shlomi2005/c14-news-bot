@@ -5,13 +5,14 @@ import os
 import json
 import time
 import logging
+import xml.etree.ElementTree as ET
 import requests
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@c14newsflash")
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "60"))
 STATE_FILE = os.path.join(os.environ.get("DATA_DIR", "."), "state_c14.json")
-NEWS_URL = "https://www.c14.co.il/wp-json/wp/v2/posts?categories=950&per_page=20&_fields=id,title,link,date&orderby=date&order=desc"
+NEWS_URL = "https://www.c14.co.il/category/%D7%9E%D7%91%D7%96%D7%A7%D7%99%D7%9D/feed/"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,28 +40,26 @@ def save_state(seen: set):
 
 
 def fetch_news() -> list:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    }
-    response = requests.get(NEWS_URL, headers=headers, timeout=30)
+    response = requests.get(NEWS_URL, timeout=30)
     response.raise_for_status()
 
-    posts = response.json()
+    root = ET.fromstring(response.content)
+    ns = {"content": "http://purl.org/rss/1.0/modules/content/"}
     items = []
 
-    for post in posts:
-        post_id = str(post.get("id", ""))
-        title = post.get("title", {}).get("rendered", "").strip()
-        link = post.get("link", "")
+    for item in root.findall(".//item"):
+        title_el = item.find("title")
+        link_el = item.find("link")
+        guid_el = item.find("guid")
 
-        if not post_id or not title:
+        title = title_el.text.strip() if title_el is not None and title_el.text else ""
+        link = link_el.text.strip() if link_el is not None and link_el.text else ""
+        post_id = guid_el.text.strip() if guid_el is not None and guid_el.text else link
+
+        if not title:
             continue
 
-        items.append({
-            "id": post_id,
-            "title": title,
-            "link": link,
-        })
+        items.append({"id": post_id, "title": title, "link": link})
 
     return items
 
