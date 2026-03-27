@@ -43,9 +43,17 @@ def save_state(seen: set):
 
 def fetch_news() -> list:
     headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; C14NewsBot/1.0)"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Referer": "https://www.google.com/",
     }
-    response = requests.get(NEWS_URL, headers=headers, timeout=30)
+    session = requests.Session()
+    session.headers.update(headers)
+    response = session.get(NEWS_URL, timeout=30, allow_redirects=True)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
