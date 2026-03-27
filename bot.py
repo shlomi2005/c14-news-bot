@@ -119,10 +119,10 @@ def process_once(seen: set, initialized: bool) -> tuple[set, bool]:
     logger.info(f"נמצאו {len(items)} פריטים")
 
     if not initialized:
-        logger.info("ריצה ראשונה — מסמן כל הפריטים הקיימים, לא שולח")
-        new_seen = seen | {item["id"] for item in items}
+        logger.info("ריצה ראשונה — מסמן את כל הפריטים חוץ מ-5 האחרונים")
+        new_seen = seen | {item["id"] for item in items[:-5]}
         save_state(new_seen)
-        logger.info("אותחל. מהריצה הבאה ישלח רק חדשות חדשות")
+        logger.info("אותחל. מעלה את 5 הפריטים האחרונים...")
         return new_seen, True
 
     new_items = [item for item in items if item["id"] not in seen]
